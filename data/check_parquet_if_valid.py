@@ -24,3 +24,26 @@ LIMIT 10;
 
 result = con.execute(query).fetchdf()
 print(result)
+
+import pyarrow.parquet as pq
+
+table = pq.read_table("lineitem_q3.parquet")  
+
+print()
+print("Table: lineitem_q3.parquet")
+for col, dtype in zip(table.column_names, table.schema.types):
+    print(f"Column: {col}, type: {dtype}")
+
+table = pq.read_table("customer_q3.parquet")  
+
+print()
+print("Table: customer_q3.parquet")
+for col, dtype in zip(table.column_names, table.schema.types):
+    print(f"Column: {col}, type: {dtype}")
+
+table = pq.read_table("orders_q3.parquet")  
+
+print()
+print("Table: orders_q3.parquet")
+for col, dtype in zip(table.column_names, table.schema.types):
+    print(f"Column: {col}, type: {dtype}")

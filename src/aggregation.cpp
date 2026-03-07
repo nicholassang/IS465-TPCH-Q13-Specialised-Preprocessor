@@ -2,6 +2,7 @@
 #include <arrow/api.h>
 #include <arrow/array.h>
 #include <arrow/type.h>
+#include <arrow/util/decimal.h>
 #include <unordered_map>
 #include <vector>
 #include <iostream>
