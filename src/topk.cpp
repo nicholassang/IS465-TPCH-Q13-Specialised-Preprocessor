@@ -4,9 +4,10 @@
 
 std::vector<Result> topk(const std::vector<Result>& results, size_t k) {
     auto cmp = [](const Result& a, const Result& b) {
-        if (a.revenue != b.revenue) return a.revenue > b.revenue;
-        return a.orderdate < b.orderdate;
+        if (a.revenue != b.revenue) return a.revenue > b.revenue; // descending
+        return a.orderdate < b.orderdate;                        // ascending
     };
+
     std::priority_queue<Result, std::vector<Result>, decltype(cmp)> pq(cmp);
 
     for (const auto& r : results) {
@@ -15,10 +16,11 @@ std::vector<Result> topk(const std::vector<Result>& results, size_t k) {
     }
 
     std::vector<Result> out;
+    out.reserve(pq.size());
     while (!pq.empty()) {
         out.push_back(pq.top());
         pq.pop();
     }
-    std::reverse(out.begin(), out.end());
+    std::reverse(out.begin(), out.end()); // largest first
     return out;
 }

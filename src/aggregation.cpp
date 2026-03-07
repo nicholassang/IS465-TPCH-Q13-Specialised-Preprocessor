@@ -1,31 +1,71 @@
-#include "aggregation.h"
+#pragma once
+#include "types.h"
+#include "scan_parquet.h"
+#include <unordered_map>
+#include <vector>
 #include <iostream>
 
 void aggregate_lineitem(const ParquetTable& lineitem,
                         const std::unordered_map<int64_t, OrderInfo>& orders_ht,
                         std::unordered_map<int64_t, AggResult>& agg) {
-    auto& orderkey_col = lineitem.int64_cols[0];       // l_orderkey
-    auto& extended_col = lineitem.double_cols[0];      // l_extendedprice
-    auto& discount_col = lineitem.double_cols[1];      // l_discount
-    auto& shipdate_col = lineitem.int32_cols[0];       // l_shipdate
+    // Validate that required columns exist
+    if (lineitem.int64_cols.size() < 1 ) {
+        std::cerr << "[ERROR] orderkey_col missing required columns!" << std::endl;
+        return;
+    }
+    if (lineitem.double_cols.size() < 2 ) {
+        std::cerr << "[ERROR] extended_col discount_col missing required columns!" << std::endl;
+        return;
+    }
+    if (lineitem.int32_cols.size() < 1) {
+        std::cerr << "[ERROR] shipdate_col missing required columns!" << std::endl;
+        return;
+    }
+
+    auto& orderkey_col  = lineitem.int64_cols[0];  // l_orderkey
+    auto& extended_col  = lineitem.double_cols[0]; // l_extendedprice
+    auto& discount_col  = lineitem.double_cols[1]; // l_discount
+    auto& shipdate_col  = lineitem.int32_cols[0];  // l_shipdate
+
+    size_t n = orderkey_col.size();
+    if (extended_col.size() != n || discount_col.size() != n || shipdate_col.size() != n) {
+        std::cerr << "[ERROR] Column size mismatch in lineitem table!" << std::endl;
+        return;
+    }
+
+    std::cout << "[DEBUG] Starting aggregation for " << n << " lineitems" << std::endl;
 
     int64_t aggregated_count = 0;
+    int64_t skipped_count = 0;
 
-    for (int64_t i = 0; i < orderkey_col.size(); i++) {
+    for (size_t i = 0; i < n; i++) {
         int64_t orderkey = orderkey_col[i];
-        if (orders_ht.find(orderkey) != orders_ht.end()) {
-            if (shipdate_col[i] > 9204) { // days since 1970
-                double revenue = extended_col[i] * (1.0 - discount_col[i]);
-                auto& r = agg[orderkey];
-                r.revenue += revenue;
-                r.orderdate = orders_ht.at(orderkey).orderdate;
-                r.shippriority = orders_ht.at(orderkey).shippriority;
-                aggregated_count++;
-            }
+        int32_t shipdate = shipdate_col[i];
+
+        auto it = orders_ht.find(orderkey);
+        if (it == orders_ht.end()) {
+            skipped_count++;
+            continue;
+        }
+
+        double revenue = extended_col[i] * (1.0 - discount_col[i]);
+        AggResult& r = agg[orderkey];
+        r.revenue += revenue;
+        r.orderdate = it->second.orderdate;
+        r.shippriority = it->second.shippriority;
+
+        aggregated_count++;
+
+        if (aggregated_count % 100000 == 0) {
+            std::cout << "[DEBUG] Aggregated " << aggregated_count
+                      << " lineitems, skipped " << skipped_count << std::endl;
+            std::cout.flush();
         }
     }
 
-    std::cout << "[INFO] Aggregated " << aggregated_count << " lineitems out of " << orderkey_col.size() << std::endl;
+    std::cout << "[INFO] Aggregation complete: " << aggregated_count 
+              << " aggregated, " << skipped_count << " skipped." << std::endl;
+    std::cout.flush();
 }
 
 std::vector<Result> collect_results(const std::unordered_map<int64_t, AggResult>& agg) {

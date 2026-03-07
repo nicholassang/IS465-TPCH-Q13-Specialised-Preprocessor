@@ -13,6 +13,9 @@ ParquetTable read_parquet(const std::string& filename, const std::vector<int>& c
     int num_columns = file_metadata->num_columns();
     int64_t num_rows = file_metadata->num_rows();
 
+    int num_row_groups = file_metadata->num_row_groups();
+    std::cout << "[INFO] Num row groups: " << num_row_groups << std::endl;
+
     ParquetTable table;
     table.num_rows = num_rows;
     table.num_cols = num_columns;
@@ -23,55 +26,85 @@ ParquetTable read_parquet(const std::string& filename, const std::vector<int>& c
     }
 
     for (int col_index : cols) {
-        auto column_reader = reader->RowGroup(0)->Column(col_index);
         parquet::Type::type t = file_metadata->schema()->Column(col_index)->physical_type();
+        std::cout << "[INFO] Reading column " << col_index
+                  << " type=" << t
+                  << ", expecting " << num_rows << " rows" << std::endl;
 
         if (t == parquet::Type::INT32) {
-            auto int_reader = static_cast<parquet::Int32Reader*>(column_reader.get());
-            std::vector<int32_t> data(num_rows);
-            int64_t values_read = 0;
-            int16_t def_level;
-            int32_t value;
-            while (int_reader->HasNext()) {
-                int_reader->ReadBatch(1, &def_level, nullptr, &value, &values_read);
-                data[values_read - 1] = value;
+            std::vector<int32_t> data;
+            data.reserve(num_rows);
+            for (int rg = 0; rg < num_row_groups; rg++) {
+                auto reader_rg = reader->RowGroup(rg)->Column(col_index);
+                auto int_reader = static_cast<parquet::Int32Reader*>(reader_rg.get());
+                int16_t def_level;
+                int32_t value;
+                while (int_reader->HasNext()) {
+                    int64_t values_read = 0;
+                    int_reader->ReadBatch(1, &def_level, nullptr, &value, &values_read);
+                    if (values_read > 0) data.push_back(value);
+                }
             }
+            std::cout << "[INFO] First 5 int32 values: ";
+            for (size_t i = 0; i < std::min<size_t>(5, data.size()); i++) std::cout << data[i] << " ";
+            std::cout << std::endl;
             table.int32_cols.push_back(std::move(data));
         }
         else if (t == parquet::Type::INT64) {
-            auto int_reader = static_cast<parquet::Int64Reader*>(column_reader.get());
-            std::vector<int64_t> data(num_rows);
-            int64_t values_read = 0;
-            int16_t def_level;
-            int64_t value;
-            while (int_reader->HasNext()) {
-                int_reader->ReadBatch(1, &def_level, nullptr, &value, &values_read);
-                data[values_read - 1] = value;
+            std::vector<int64_t> data;
+            data.reserve(num_rows);
+            for (int rg = 0; rg < num_row_groups; rg++) {
+                auto reader_rg = reader->RowGroup(rg)->Column(col_index);
+                auto int_reader = static_cast<parquet::Int64Reader*>(reader_rg.get());
+                int16_t def_level;
+                int64_t value;
+                while (int_reader->HasNext()) {
+                    int64_t values_read = 0;
+                    int_reader->ReadBatch(1, &def_level, nullptr, &value, &values_read);
+                    if (values_read > 0) data.push_back(value);
+                }
             }
+            std::cout << "[INFO] First 5 int64 values: ";
+            for (size_t i = 0; i < std::min<size_t>(5, data.size()); i++) std::cout << data[i] << " ";
+            std::cout << std::endl;
             table.int64_cols.push_back(std::move(data));
         }
         else if (t == parquet::Type::DOUBLE) {
-            auto dbl_reader = static_cast<parquet::DoubleReader*>(column_reader.get());
-            std::vector<double> data(num_rows);
-            int64_t values_read = 0;
-            int16_t def_level;
-            double value;
-            while (dbl_reader->HasNext()) {
-                dbl_reader->ReadBatch(1, &def_level, nullptr, &value, &values_read);
-                data[values_read - 1] = value;
+            std::vector<double> data;
+            data.reserve(num_rows);
+            for (int rg = 0; rg < num_row_groups; rg++) {
+                auto reader_rg = reader->RowGroup(rg)->Column(col_index);
+                auto dbl_reader = static_cast<parquet::DoubleReader*>(reader_rg.get());
+                int16_t def_level;
+                double value;
+                while (dbl_reader->HasNext()) {
+                    int64_t values_read = 0;
+                    dbl_reader->ReadBatch(1, &def_level, nullptr, &value, &values_read);
+                    if (values_read > 0) data.push_back(value);
+                }
             }
+            std::cout << "[INFO] First 5 double values: ";
+            for (size_t i = 0; i < std::min<size_t>(5, data.size()); i++) std::cout << data[i] << " ";
+            std::cout << std::endl;
             table.double_cols.push_back(std::move(data));
         }
         else if (t == parquet::Type::BYTE_ARRAY) {
-            auto ba_reader = static_cast<parquet::ByteArrayReader*>(column_reader.get());
-            std::vector<std::string> data(num_rows);
-            int64_t values_read = 0;
-            int16_t def_level;
-            parquet::ByteArray value;
-            while (ba_reader->HasNext()) {
-                ba_reader->ReadBatch(1, &def_level, nullptr, &value, &values_read);
-                data[values_read - 1] = std::string(reinterpret_cast<const char*>(value.ptr), value.len);
+            std::vector<std::string> data;
+            data.reserve(num_rows);
+            for (int rg = 0; rg < num_row_groups; rg++) {
+                auto reader_rg = reader->RowGroup(rg)->Column(col_index);
+                auto ba_reader = static_cast<parquet::ByteArrayReader*>(reader_rg.get());
+                int16_t def_level;
+                parquet::ByteArray value;
+                while (ba_reader->HasNext()) {
+                    int64_t values_read = 0;
+                    ba_reader->ReadBatch(1, &def_level, nullptr, &value, &values_read);
+                    if (values_read > 0) data.emplace_back(reinterpret_cast<const char*>(value.ptr), value.len);
+                }
             }
+            std::cout << "[INFO] First 5 string values: ";
+            for (size_t i = 0; i < std::min<size_t>(5, data.size()); i++) std::cout << "\"" << data[i] << "\" ";
+            std::cout << std::endl;
             table.string_cols.push_back(std::move(data));
         }
         else {
