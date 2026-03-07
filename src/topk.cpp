@@ -1,6 +1,6 @@
 #include "topk.h"
 #include <queue>
-#include <vector>
+#include <algorithm>
 
 std::vector<Result> topk(const std::vector<Result>& results, size_t k) {
     auto cmp = [](const Result& a, const Result& b) {
@@ -9,7 +9,7 @@ std::vector<Result> topk(const std::vector<Result>& results, size_t k) {
     };
     std::priority_queue<Result, std::vector<Result>, decltype(cmp)> pq(cmp);
 
-    for (auto& r : results) {
+    for (const auto& r : results) {
         pq.push(r);
         if (pq.size() > k) pq.pop();
     }

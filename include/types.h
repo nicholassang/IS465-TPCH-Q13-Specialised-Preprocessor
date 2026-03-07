@@ -1,7 +1,5 @@
-// include/types.h
 #pragma once
-#include <unordered_map>
-#include <vector>
+#include <cstdint>
 
 struct OrderInfo {
     int orderdate;
@@ -9,9 +7,9 @@ struct OrderInfo {
 };
 
 struct AggResult {
-    double revenue;
-    int orderdate;
-    int shippriority;
+    double revenue = 0.0;
+    int orderdate = 0;
+    int shippriority = 0;
 };
 
 struct Result {
