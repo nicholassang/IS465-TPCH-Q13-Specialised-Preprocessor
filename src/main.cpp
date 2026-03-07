@@ -15,13 +15,13 @@ int main(int argc, char** argv) {
     auto orders   = read_parquet(argv[2], {0,1,2,3}); // o_orderkey,o_custkey,o_orderdate,o_shippriority
     auto lineitem = read_parquet(argv[3], {0,1,2,3}); // l_orderkey,l_extendedprice,l_discount,l_shipdate
 
-    std::unordered_set<int> valid_customers;
+    std::unordered_set<int64_t> valid_customers;
     filter_customers(customer, valid_customers);
 
-    std::unordered_map<int, OrderInfo> orders_ht;
+    std::unordered_map<int64_t, OrderInfo> orders_ht;
     build_orders_hash(orders, valid_customers, orders_ht);
 
-    std::unordered_map<int, AggResult> agg;
+    std::unordered_map<int64_t, AggResult> agg;
     aggregate_lineitem(lineitem, orders_ht, agg);
 
     auto results = collect_results(agg);

@@ -3,7 +3,7 @@
 #include <iostream>
 
 void filter_customers(const std::shared_ptr<arrow::Table>& customer,
-                      std::unordered_set<int>& valid_customers) {
+                      std::unordered_set<int64_t>& valid_customers) {
     auto custkey_col = std::static_pointer_cast<arrow::Int32Array>(
         customer->GetColumnByName("c_custkey")->chunk(0));
     auto mktseg_col = std::static_pointer_cast<arrow::StringArray>(
@@ -20,8 +20,8 @@ void filter_customers(const std::shared_ptr<arrow::Table>& customer,
 }
 
 void build_orders_hash(const std::shared_ptr<arrow::Table>& orders,
-                       const std::unordered_set<int>& valid_customers,
-                       std::unordered_map<int, OrderInfo>& orders_ht) {
+                       const std::unordered_set<int64_t>& valid_customers,
+                       std::unordered_map<int64_t, OrderInfo>& orders_ht) {
     auto orderkey_col = std::static_pointer_cast<arrow::Int32Array>(
         orders->GetColumnByName("o_orderkey")->chunk(0));
     auto custkey_col = std::static_pointer_cast<arrow::Int32Array>(

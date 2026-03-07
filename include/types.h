@@ -13,7 +13,7 @@ struct AggResult {
 };
 
 struct Result {
-    int orderkey;
+    int64_t orderkey;
     double revenue;
     int orderdate;
     int shippriority;
