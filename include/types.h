@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <string>
 
 struct OrderInfo {
     int orderdate;
@@ -15,6 +16,6 @@ struct AggResult {
 struct Result {
     int64_t orderkey;
     double revenue;
-    int orderdate;
+    std::string orderdate;
     int shippriority;
 };
