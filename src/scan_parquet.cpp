@@ -4,17 +4,37 @@
 #include <cmath>
 
 ParquetTable read_parquet(const std::string& filename, const std::vector<int>& column_indices) {
-    std::cout << "[INFO] Opening Parquet file: " << filename << std::endl;
+    std::cout << "Opening Parquet file: " << filename << std::endl;
 
     std::unique_ptr<parquet::ParquetFileReader> reader =
         parquet::ParquetFileReader::OpenFile(filename, false);
 
     auto file_metadata = reader->metadata();
     int num_columns = file_metadata->num_columns();
+    // Log column info
+    std::cout << "Columns in " << filename << ":\n";
+    for (int c = 0; c < num_columns; c++) {
+        auto col_schema = file_metadata->schema()->Column(c);
+        std::string col_name = col_schema->name();
+        parquet::Type::type physical_type = col_schema->physical_type();
+
+        std::string type_str;
+        switch (physical_type) {
+            case parquet::Type::INT32: type_str = "INT32"; break;
+            case parquet::Type::INT64: type_str = "INT64"; break;
+            case parquet::Type::DOUBLE: type_str = "DOUBLE"; break;
+            case parquet::Type::BYTE_ARRAY: type_str = "BYTE_ARRAY"; break;
+            case parquet::Type::FIXED_LEN_BYTE_ARRAY: type_str = "FIXED_LEN_BYTE_ARRAY"; break;
+            default: type_str = "UNKNOWN"; break;
+        }
+
+        std::cout << "Column " << c << ": " << col_name << ", type=" << type_str << std::endl;
+    }
+
     int64_t num_rows = file_metadata->num_rows();
 
     int num_row_groups = file_metadata->num_row_groups();
-    std::cout << "[INFO] Num row groups: " << num_row_groups << std::endl;
+    std::cout << "Num row groups: " << num_row_groups << std::endl;
 
     ParquetTable table;
     table.num_rows = num_rows;
@@ -112,7 +132,7 @@ ParquetTable read_parquet(const std::string& filename, const std::vector<int>& c
         }
     }
 
-    std::cout << "[INFO] Successfully read table with "
+    std::cout << "Successfully read table with "
               << table.num_rows << " rows and "
               << table.num_cols << " columns." << std::endl;
 
