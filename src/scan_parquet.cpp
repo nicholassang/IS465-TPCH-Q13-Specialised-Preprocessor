@@ -4,7 +4,7 @@
 #include <cmath>
 
 ParquetTable read_parquet(const std::string& filename, const std::vector<int>& column_indices) {
-    std::cout << "Opening Parquet file: " << filename << std::endl;
+    std::cout << "read_parquet: Opening Parquet file: " << filename << std::endl;
 
     std::unique_ptr<parquet::ParquetFileReader> reader =
         parquet::ParquetFileReader::OpenFile(filename, false);
@@ -12,7 +12,7 @@ ParquetTable read_parquet(const std::string& filename, const std::vector<int>& c
     auto file_metadata = reader->metadata();
     int num_columns = file_metadata->num_columns();
     // Log column info
-    std::cout << "Columns in " << filename << ":\n";
+    std::cout << "read_parquet: Columns in " << filename << ":\n";
     for (int c = 0; c < num_columns; c++) {
         auto col_schema = file_metadata->schema()->Column(c);
         std::string col_name = col_schema->name();
@@ -28,13 +28,12 @@ ParquetTable read_parquet(const std::string& filename, const std::vector<int>& c
             default: type_str = "UNKNOWN"; break;
         }
 
-        std::cout << "Column " << c << ": " << col_name << ", type=" << type_str << std::endl;
+        std::cout << "read_parquet: Column " << c << ": " << col_name << ", type=" << type_str << std::endl;
     }
 
     int64_t num_rows = file_metadata->num_rows();
 
     int num_row_groups = file_metadata->num_row_groups();
-    std::cout << "Num row groups: " << num_row_groups << std::endl;
 
     ParquetTable table;
     table.num_rows = num_rows;
@@ -47,9 +46,6 @@ ParquetTable read_parquet(const std::string& filename, const std::vector<int>& c
 
     for (int col_index : cols) {
         parquet::Type::type t = file_metadata->schema()->Column(col_index)->physical_type();
-        std::cout << "[INFO] Reading column " << col_index
-                  << " type=" << t
-                  << ", expecting " << num_rows << " rows" << std::endl;
 
         if (t == parquet::Type::INT32) {
             std::vector<int32_t> data;
@@ -65,9 +61,6 @@ ParquetTable read_parquet(const std::string& filename, const std::vector<int>& c
                     if (values_read > 0) data.push_back(value);
                 }
             }
-            std::cout << "[INFO] First 5 int32 values: ";
-            for (size_t i = 0; i < std::min<size_t>(5, data.size()); i++) std::cout << data[i] << " ";
-            std::cout << std::endl;
             table.int32_cols.push_back(std::move(data));
         }
         else if (t == parquet::Type::INT64) {
@@ -84,9 +77,6 @@ ParquetTable read_parquet(const std::string& filename, const std::vector<int>& c
                     if (values_read > 0) data.push_back(value);
                 }
             }
-            std::cout << "[INFO] First 5 int64 values: ";
-            for (size_t i = 0; i < std::min<size_t>(5, data.size()); i++) std::cout << data[i] << " ";
-            std::cout << std::endl;
             table.int64_cols.push_back(std::move(data));
         }
         else if (t == parquet::Type::DOUBLE) {
@@ -103,9 +93,6 @@ ParquetTable read_parquet(const std::string& filename, const std::vector<int>& c
                     if (values_read > 0) data.push_back(value);
                 }
             }
-            std::cout << "[INFO] First 5 double values: ";
-            for (size_t i = 0; i < std::min<size_t>(5, data.size()); i++) std::cout << data[i] << " ";
-            std::cout << std::endl;
             table.double_cols.push_back(std::move(data));
         }
         else if (t == parquet::Type::BYTE_ARRAY) {
@@ -122,9 +109,6 @@ ParquetTable read_parquet(const std::string& filename, const std::vector<int>& c
                     if (values_read > 0) data.emplace_back(reinterpret_cast<const char*>(value.ptr), value.len);
                 }
             }
-            std::cout << "[INFO] First 5 string values: ";
-            for (size_t i = 0; i < std::min<size_t>(5, data.size()); i++) std::cout << "\"" << data[i] << "\" ";
-            std::cout << std::endl;
             table.string_cols.push_back(std::move(data));
         }
         else {
@@ -132,9 +116,10 @@ ParquetTable read_parquet(const std::string& filename, const std::vector<int>& c
         }
     }
 
-    std::cout << "Successfully read table with "
+    std::cout << "read_parquet: Successfully read table with "
               << table.num_rows << " rows and "
               << table.num_cols << " columns." << std::endl;
+    std::cout << "==============================="<< std::endl;
 
     return table;
 }

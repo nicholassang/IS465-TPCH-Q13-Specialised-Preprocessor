@@ -10,15 +10,15 @@ void aggregate_lineitem(const ParquetTable& lineitem,
                         std::unordered_map<int64_t, AggResult>& agg) {
     // Validate that required columns exist
     if (lineitem.int64_cols.size() < 1 ) {
-        std::cerr << "[ERROR] orderkey_col missing required columns!" << std::endl;
+        std::cerr << "aggregate_lineitem: [ERROR] orderkey_col missing required columns!" << std::endl;
         return;
     }
     if (lineitem.double_cols.size() < 2 ) {
-        std::cerr << "[ERROR] extended_col discount_col missing required columns!" << std::endl;
+        std::cerr << "aggregate_lineitem: [ERROR] extended_col discount_col missing required columns!" << std::endl;
         return;
     }
     if (lineitem.int32_cols.size() < 1) {
-        std::cerr << "[ERROR] shipdate_col missing required columns!" << std::endl;
+        std::cerr << "aggregate_lineitem: [ERROR] shipdate_col missing required columns!" << std::endl;
         return;
     }
 
@@ -29,11 +29,11 @@ void aggregate_lineitem(const ParquetTable& lineitem,
 
     size_t n = orderkey_col.size();
     if (extended_col.size() != n || discount_col.size() != n || shipdate_col.size() != n) {
-        std::cerr << "[ERROR] Column size mismatch in lineitem table!" << std::endl;
+        std::cerr << "aggregate_lineitem: [ERROR] Column size mismatch in lineitem table!" << std::endl;
         return;
     }
 
-    std::cout << "[DEBUG] Starting aggregation for " << n << " lineitems" << std::endl;
+    std::cout << "aggregate_lineitem: [DEBUG] Starting aggregation for " << n << " lineitems" << std::endl;
 
     int64_t aggregated_count = 0;
     int64_t skipped_count = 0;
@@ -57,15 +57,16 @@ void aggregate_lineitem(const ParquetTable& lineitem,
         aggregated_count++;
 
         if (aggregated_count % 100000 == 0) {
-            std::cout << "[DEBUG] Aggregated " << aggregated_count
+            std::cout << "aggregate_lineitem: [DEBUG] Aggregated " << aggregated_count
                       << " lineitems, skipped " << skipped_count << std::endl;
             std::cout.flush();
         }
     }
 
-    std::cout << "[INFO] Aggregation complete: " << aggregated_count 
+    std::cout << "aggregate_lineitem: [INFO] Aggregation complete: " << aggregated_count 
               << " aggregated, " << skipped_count << " skipped." << std::endl;
     std::cout.flush();
+    std::cout << "==============================="<< std::endl;
 }
 
 std::vector<Result> collect_results(const std::unordered_map<int64_t, AggResult>& agg) {
@@ -76,6 +77,6 @@ std::vector<Result> collect_results(const std::unordered_map<int64_t, AggResult>
         results.push_back({orderkey, r.revenue, r.orderdate, r.shippriority});
     }
 
-    std::cout << "[INFO] Collected " << results.size() << " results" << std::endl;
+    std::cout << "collect_results: [INFO] Collected " << results.size() << " results" << std::endl;
     return results;
 }

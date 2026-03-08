@@ -25,7 +25,7 @@ void build_orders_hash(const ParquetTable& orders,
 
             // Debug first 5 orders
             if (inserted_count <= 5) {
-                std::cout << "[DEBUG] Insert orderkey=" << o_orderkey 
+                std::cout << "[DEBUG] build_orders_hash: Insert orderkey=" << o_orderkey 
                           << " custkey=" << o_custkey
                           << " orderdate=" << o_orderdate
                           << " shipprio=" << shipprio_col[i] << std::endl;
@@ -33,7 +33,7 @@ void build_orders_hash(const ParquetTable& orders,
         } else {
             // Log skipped orders
             if (i < 5) {
-                std::cout << "[SKIP] orderkey=" << o_orderkey 
+                std::cout << "[SKIP] build_orders_hash: orderkey=" << o_orderkey 
                           << " custkey=" << o_custkey
                           << " orderdate=" << o_orderdate
                           << std::endl;
@@ -41,7 +41,8 @@ void build_orders_hash(const ParquetTable& orders,
         }
     }
 
-    std::cout << "[INFO] Inserted " << inserted_count << " orders into hash table" << std::endl;
+    std::cout << "[INFO] build_orders_hash: Inserted " << inserted_count << " orders into hash table" << std::endl;
+    std::cout << "==============================="<< std::endl;
 }
 
 void filter_customers(const ParquetTable& customer,
@@ -57,5 +58,6 @@ void filter_customers(const ParquetTable& customer,
         }
     }
 
-    std::cout << "[LOG] filter_customers: " << valid_customers.size() << " valid customers selected" << std::endl;
+    std::cout << "[LOG] filter_customers: filter_customers: " << valid_customers.size() << " valid customers selected" << std::endl;
+    std::cout << "==============================="<< std::endl;
 }
