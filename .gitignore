@@ -1,5 +1,4 @@
-customer.parquet
-orders.parquet
+*.parquet
 
 q13env
 build-native/
