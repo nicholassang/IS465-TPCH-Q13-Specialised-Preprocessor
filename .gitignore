@@ -8,3 +8,4 @@ region.parquet
 supplier.parquet
 
 q13env
+build-native/

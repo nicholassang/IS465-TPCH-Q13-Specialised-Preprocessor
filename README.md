@@ -52,3 +52,25 @@ Show in-progress timing during the orders scan plus final totals:
 ```bash
 python -m myengine --sf 5 --out result.csv --log-timings --log-every-batches 25
 ```
+
+## Native C++ Branch
+This repository also has a native C++ implementation on branch `cpp-q13-native`.
+
+Build from a Visual Studio developer shell:
+
+```bash
+cmake -S . -B build-native -G "NMake Makefiles"
+cmake --build build-native --config Release
+```
+
+Run:
+
+```bash
+build-native\q13_native.exe --data data\sf1 --out result.csv
+```
+
+Benchmark with similar timing logs:
+
+```bash
+build-native\q13_native.exe --data data\sf1 --benchmark 6 --log-timings --log-every-batches 5
+```
