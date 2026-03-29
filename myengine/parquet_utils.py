@@ -46,3 +46,7 @@ def get_max_int_column(parquet_path: Path, column: str, batch_size: int = 65536)
         if local_max is not None and local_max > max_value:
             max_value = local_max
     return max_value
+
+
+def get_parquet_num_rows(parquet_path: Path) -> int:
+    return pq.ParquetFile(parquet_path).metadata.num_rows

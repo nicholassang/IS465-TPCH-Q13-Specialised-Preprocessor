@@ -8,8 +8,9 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pyarrow.compute as pc
+import pyarrow.parquet as pq
 
-from .parquet_utils import get_max_int_column, iter_record_batches
+from .parquet_utils import get_max_int_column, get_parquet_num_rows, iter_record_batches
 
 
 ResultRows = List[Tuple[int, int]]
@@ -59,6 +60,25 @@ def load_customers(customer_path: Path) -> Tuple[List[int], List[bool]]:
         valid_customer[batch.column(0).to_numpy()] = True
 
     return counts, valid_customer
+
+
+def load_customer_metadata(customer_path: Path) -> Tuple[int, int]:
+    num_customers = get_parquet_num_rows(customer_path)
+    max_custkey = get_max_int_column(customer_path, "c_custkey")
+    if max_custkey < 0:
+        raise ValueError("No customer keys found in customer.parquet")
+    return num_customers, max_custkey
+
+
+def process_orders_in_memory(orders_path: Path, counts: np.ndarray) -> None:
+    orders = pq.read_table(orders_path, columns=["o_custkey", "o_comment"], use_threads=True)
+    matched = pc.match_substring_regex(orders.column("o_comment"), "special.*requests")
+    keep_mask = pc.fill_null(pc.invert(matched), False)
+    batch_counts = pc.value_counts(pc.filter(orders.column("o_custkey"), keep_mask))
+    if len(batch_counts):
+        values = pc.struct_field(batch_counts, "values").to_numpy()
+        freqs = pc.struct_field(batch_counts, "counts").to_numpy()
+        counts[values] += freqs
 
 
 def process_orders(
@@ -132,6 +152,17 @@ def build_histogram(counts: np.ndarray, valid_customer: np.ndarray) -> Counter:
     )
 
 
+def build_histogram_for_contiguous_customers(counts: np.ndarray, num_customers: int) -> Counter:
+    histogram_counts = np.bincount(counts[1 : num_customers + 1])
+    return Counter(
+        {
+            c_count: int(custdist)
+            for c_count, custdist in enumerate(histogram_counts)
+            if custdist
+        }
+    )
+
+
 def sort_results(histogram: Counter) -> ResultRows:
     """
     Sort by:
@@ -171,7 +202,8 @@ def run_q13(
     if log_timings:
         print(f"[timing] starting q13 run on {data_dir}")
 
-    counts, valid_customer = load_customers(customer_path)
+    num_customers, max_custkey = load_customer_metadata(customer_path)
+    counts = np.zeros(max_custkey + 1, dtype=np.int32)
     t1 = time.perf_counter()
     if log_timings:
         print(
@@ -179,13 +211,18 @@ def run_q13(
             f"elapsed={t1 - t0:.6f}s, cumulative={t1 - t0:.6f}s"
         )
 
-    process_orders(
-        orders_path,
-        counts,
-        valid_customer,
-        log_timings=log_timings,
-        log_every_batches=log_every_batches,
-    )
+    if max_custkey == num_customers:
+        process_orders_in_memory(orders_path, counts)
+        valid_customer = None
+    else:
+        counts, valid_customer = load_customers(customer_path)
+        process_orders(
+            orders_path,
+            counts,
+            valid_customer,
+            log_timings=log_timings,
+            log_every_batches=log_every_batches,
+        )
     t2 = time.perf_counter()
     if log_timings:
         print(
@@ -193,7 +230,10 @@ def run_q13(
             f"elapsed={t2 - t1:.6f}s, cumulative={t2 - t0:.6f}s"
         )
 
-    histogram = build_histogram(counts, valid_customer)
+    if valid_customer is None:
+        histogram = build_histogram_for_contiguous_customers(counts, num_customers)
+    else:
+        histogram = build_histogram(counts, valid_customer)
     t3 = time.perf_counter()
     if log_timings:
         print(
