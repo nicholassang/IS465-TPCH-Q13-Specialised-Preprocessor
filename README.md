@@ -24,6 +24,31 @@ This preserves the exact semantics of Q13 while avoiding a large join intermedia
 - Python 3.10+
 - `pip install -r requirements.txt`
 
+## Data Requirements
+For this Q13 processor, only these Parquet files are required in the selected data directory:
+
+- `customer.parquet`
+- `orders.parquet`
+
+Other TPC-H tables (`lineitem`, `nation`, `part`, `partsupp`, `region`, `supplier`) are not used by this implementation.
+
+## Implementation Summary
+
+### Python (`myengine`)
+- Entry point: `python -m myengine`
+- Reads customer metadata and customer keys to initialize dense per-customer count storage.
+- Reads orders columns (`o_custkey`, `o_comment`) with PyArrow.
+- Applies Q13 predicate (`o_comment NOT LIKE '%special%requests%'`) and aggregates qualifying orders by customer.
+- Builds the final histogram (`c_count -> custdist`) and sorts by `custdist DESC, c_count DESC`.
+- Supports stage-level timing logs and benchmark mode.
+
+### C++ (`native/q13_native.cpp`)
+- Entry point: `build-native\\q13_native.exe`
+- Uses Arrow/Parquet C++ readers against the same Parquet files.
+- Streams orders in record batches and processes comment filtering plus per-customer counting in parallel.
+- Reuses the same Q13 semantics and final ordering as the Python path.
+- Exposes comparable benchmark and timing logs to evaluate against DuckDB.
+
 ## Run
 ```bash
 python -m myengine --data data/sf1 --out result.csv

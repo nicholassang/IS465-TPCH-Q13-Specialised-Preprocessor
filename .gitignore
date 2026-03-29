@@ -1,11 +1,5 @@
 customer.parquet
-lineitem.parquet
-nation.parquet
 orders.parquet
-part.parquet
-partsupp.parquet
-region.parquet
-supplier.parquet
 
 q13env
 build-native/
