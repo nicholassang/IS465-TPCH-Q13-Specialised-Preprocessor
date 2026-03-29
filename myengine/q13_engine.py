@@ -6,6 +6,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+import numpy as np
 import pyarrow.compute as pc
 
 from .parquet_utils import get_max_int_column, iter_record_batches
@@ -51,21 +52,19 @@ def load_customers(customer_path: Path) -> Tuple[List[int], List[bool]]:
     if max_custkey < 0:
         raise ValueError("No customer keys found in customer.parquet")
 
-    counts = [0] * (max_custkey + 1)
-    valid_customer = [False] * (max_custkey + 1)
+    counts = np.zeros(max_custkey + 1, dtype=np.int32)
+    valid_customer = np.zeros(max_custkey + 1, dtype=bool)
 
     for batch in iter_record_batches(customer_path, ["c_custkey"]):
-        custkeys = batch.column(0).to_pylist()
-        for custkey in custkeys:
-            valid_customer[custkey] = True
+        valid_customer[batch.column(0).to_numpy()] = True
 
     return counts, valid_customer
 
 
 def process_orders(
     orders_path: Path,
-    counts: List[int],
-    valid_customer: List[bool],
+    counts: np.ndarray,
+    valid_customer: np.ndarray,
     log_timings: bool = False,
     log_every_batches: int = 25,
 ) -> None:
@@ -87,13 +86,17 @@ def process_orders(
         # Vectorized SQL LIKE equivalent in Arrow: comments matching special.*requests.
         matched = pc.match_substring_regex(comments, "special.*requests")
         keep_mask = pc.fill_null(pc.invert(matched), False)
-        qualifying_custkeys = pc.filter(custkeys, keep_mask).to_pylist()
+        qualifying_custkeys = pc.filter(custkeys, keep_mask)
 
-        if qualifying_custkeys:
-            batch_counts = Counter(qualifying_custkeys)
-            for custkey, freq in batch_counts.items():
-                if 0 <= custkey < len(valid_customer) and valid_customer[custkey]:
-                    counts[custkey] += freq
+        if len(qualifying_custkeys):
+            batch_counts = pc.value_counts(qualifying_custkeys)
+            values = pc.struct_field(batch_counts, "values").to_numpy()
+            freqs = pc.struct_field(batch_counts, "counts").to_numpy()
+            present = valid_customer[values]
+            if present.all():
+                counts[values] += freqs
+            else:
+                counts[values[present]] += freqs[present]
 
         processed_batches += 1
         processed_orders += batch.num_rows
@@ -114,16 +117,19 @@ def process_orders(
         )
 
 
-def build_histogram(counts: List[int], valid_customer: List[bool]) -> Counter:
+def build_histogram(counts: np.ndarray, valid_customer: np.ndarray) -> Counter:
     """
     Build:
         c_count -> custdist
     """
-    histogram: Counter = Counter()
-    for custkey, exists in enumerate(valid_customer):
-        if exists:
-            histogram[counts[custkey]] += 1
-    return histogram
+    histogram_counts = np.bincount(counts[valid_customer])
+    return Counter(
+        {
+            c_count: int(custdist)
+            for c_count, custdist in enumerate(histogram_counts)
+            if custdist
+        }
+    )
 
 
 def sort_results(histogram: Counter) -> ResultRows:
