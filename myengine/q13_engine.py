@@ -72,7 +72,7 @@ def load_customer_metadata(customer_path: Path) -> Tuple[int, int]:
 
 def process_orders_in_memory(orders_path: Path, counts: np.ndarray) -> None:
     orders = pq.read_table(orders_path, columns=["o_custkey", "o_comment"], use_threads=True)
-    matched = pc.match_substring_regex(orders.column("o_comment"), "special.*requests")
+    matched = pc.match_substring_regex(orders.column("o_comment"), "(?s)special.*requests")
     keep_mask = pc.fill_null(pc.invert(matched), False)
     batch_counts = pc.value_counts(pc.filter(orders.column("o_custkey"), keep_mask))
     if len(batch_counts):
@@ -104,7 +104,7 @@ def process_orders(
         comments = batch.column(1)
 
         # Vectorized SQL LIKE equivalent in Arrow: comments matching special.*requests.
-        matched = pc.match_substring_regex(comments, "special.*requests")
+        matched = pc.match_substring_regex(comments, "(?s)special.*requests")
         keep_mask = pc.fill_null(pc.invert(matched), False)
         qualifying_custkeys = pc.filter(custkeys, keep_mask)
 
