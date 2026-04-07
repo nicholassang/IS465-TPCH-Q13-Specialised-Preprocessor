@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
-#include <future>
 #include <iomanip>
 #include <iostream>
 #include <cmath>
@@ -13,7 +12,6 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -103,7 +101,7 @@ bool MatchesSpecialRequests(std::string_view comment) {
 
 std::unique_ptr<parquet::arrow::FileReader> BuildParquetReader(const fs::path& parquet_path) {
   parquet::ArrowReaderProperties properties;
-  properties.set_use_threads(true);
+  properties.set_use_threads(false);
 
   parquet::arrow::FileReaderBuilder builder;
   CheckStatus(builder.OpenFile(parquet_path.string(), true), "Open parquet file");
@@ -189,40 +187,6 @@ std::vector<std::uint32_t> ProcessChunk(const arrow::Int64Array& custkeys,
   return local_counts;
 }
 
-template <typename StringArrayType>
-std::vector<std::uint32_t> ProcessChunkParallel(const arrow::Int64Array& custkeys,
-                                                const StringArrayType& comments,
-                                                std::size_t counts_size,
-                                                const std::vector<std::uint8_t>* valid) {
-  const unsigned int hardware_threads = std::max(1u, std::thread::hardware_concurrency());
-  const int64_t rows = custkeys.length();
-  const int64_t target_tasks = std::min<int64_t>(hardware_threads, std::max<int64_t>(1, rows / 65536));
-
-  if (target_tasks <= 1) {
-    return ProcessChunk(custkeys, comments, counts_size, valid, 0, rows);
-  }
-
-  std::vector<std::future<std::vector<std::uint32_t>>> tasks;
-  tasks.reserve(static_cast<std::size_t>(target_tasks));
-  for (int64_t task_index = 0; task_index < target_tasks; ++task_index) {
-    const int64_t start_row = (rows * task_index) / target_tasks;
-    const int64_t end_row = (rows * (task_index + 1)) / target_tasks;
-    tasks.push_back(std::async(std::launch::async,
-                               [&custkeys, &comments, counts_size, valid, start_row, end_row]() {
-      return ProcessChunk(custkeys, comments, counts_size, valid, start_row, end_row);
-    }));
-  }
-
-  std::vector<std::uint32_t> merged(counts_size, 0);
-  for (auto& task : tasks) {
-    auto partial = task.get();
-    for (std::size_t i = 0; i < merged.size(); ++i) {
-      merged[i] += partial[i];
-    }
-  }
-  return merged;
-}
-
 std::vector<std::uint32_t> ProcessOrders(const fs::path& orders_path,
                                          std::size_t counts_size,
                                          const std::vector<std::uint8_t>* valid_customer,
@@ -258,18 +222,22 @@ std::vector<std::uint32_t> ProcessOrders(const fs::path& orders_path,
     std::vector<std::uint32_t> local_counts;
     switch (comment_base->type_id()) {
       case arrow::Type::STRING:
-        local_counts = ProcessChunkParallel(
+        local_counts = ProcessChunk(
             *key_array,
             *std::static_pointer_cast<arrow::StringArray>(comment_base),
             counts_size,
-            valid_customer);
+            valid_customer,
+            0,
+            key_array->length());
         break;
       case arrow::Type::LARGE_STRING:
-        local_counts = ProcessChunkParallel(
+        local_counts = ProcessChunk(
             *key_array,
             *std::static_pointer_cast<arrow::LargeStringArray>(comment_base),
             counts_size,
-            valid_customer);
+            valid_customer,
+            0,
+            key_array->length());
         break;
       default:
         Fail("orders o_comment must be STRING or LARGE_STRING");
