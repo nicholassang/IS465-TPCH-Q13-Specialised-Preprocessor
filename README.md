@@ -60,7 +60,9 @@ Or using a scale-factor shortcut (supported: 0.5, 1, 2, 5):
 python -m myengine --sf 1 --out result.csv
 ```
 
-## Benchmark
+## Benchmark 
+
+Python Benchmark (Use this to test average of 5 runs, change sf where needed)
 ```bash
 python -m myengine --data data/sf1 --benchmark 6 --out result.csv
 ```
@@ -94,7 +96,7 @@ Run:
 build-native\q13_native.exe --data data\sf1 --out result.csv
 ```
 
-Benchmark with similar timing logs:
+C++ Benchmark  (Use this to test average of 5 runs, change sf where needed):
 
 ```bash
 build-native\q13_native.exe --data data\sf1 --benchmark 6 --log-timings --log-every-batches 5
