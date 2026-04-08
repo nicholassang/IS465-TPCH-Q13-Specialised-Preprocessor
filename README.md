@@ -45,7 +45,7 @@ Other TPC-H tables (`lineitem`, `nation`, `part`, `partsupp`, `region`, `supplie
 ### C++ (`native/q13_native.cpp`)
 - Entry point: `build-native\\q13_native.exe`
 - Uses Arrow/Parquet C++ readers against the same Parquet files.
-- Streams orders in record batches and processes comment filtering plus per-customer counting in parallel.
+- Streams orders in record batches and processes comment filtering plus per-customer counting serially.
 - Reuses the same Q13 semantics and final ordering as the Python path.
 - Exposes comparable benchmark and timing logs to evaluate against DuckDB.
 
