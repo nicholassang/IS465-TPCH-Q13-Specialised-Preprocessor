@@ -14,9 +14,16 @@ set(PYARROW_DIR "${CMAKE_SOURCE_DIR}/q13env/Lib/site-packages/pyarrow")
 set(PYARROW_INCLUDE_DIR "${PYARROW_DIR}/include")
 set(PYARROW_RUNTIME_DIR "${CMAKE_SOURCE_DIR}/q13env/Lib/site-packages/pyarrow.libs")
 
-add_executable(q13_native native/q13_native.cpp)
+add_executable(q13_native
+    native/main.cpp
+    native/q13_utils.cpp
+    native/q13_parquet.cpp
+    native/q13_processing.cpp
+    native/q13_engine.cpp
+    native/q13_cli.cpp
+)
 
-target_include_directories(q13_native PRIVATE "${PYARROW_INCLUDE_DIR}")
+target_include_directories(q13_native PRIVATE "${PYARROW_INCLUDE_DIR}" native/)
 target_link_directories(q13_native PRIVATE "${PYARROW_DIR}")
 target_link_libraries(q13_native PRIVATE arrow parquet)
 
